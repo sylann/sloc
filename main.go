@@ -1,13 +1,22 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"strconv"
 )
+
+type progOptions struct {
+	paths   []string
+	debug   bool
+}
 
 type fileStats struct {
 	Path         string
+	Error        error
 	Lines        int
 	LinesCode    int
 	LinesEmpty   int
@@ -16,17 +25,45 @@ type fileStats struct {
 	LineBytesMax int
 }
 
+func (f *fileStats) String() string {
+	return f.Path +
+		"\n\t- Lines: " + strconv.Itoa(f.Lines) +
+		"\n\t- LinesCode: " + strconv.Itoa(f.LinesCode) +
+		"\n\t- LinesEmpty: " + strconv.Itoa(f.LinesEmpty) +
+		"\n\t- LinesComment: " + strconv.Itoa(f.LinesComment) +
+		"\n\t- LineBytesAvg: " + strconv.Itoa(f.LineBytesAvg) +
+		"\n\t- LineBytesMax: " + strconv.Itoa(f.LineBytesMax)
+}
+
 func main() {
-	filepath := "./samples/simple.go"
-	buffer, err := os.ReadFile(filepath)
-	if err != nil {
-		log.Fatalln("File does not exist")
+	conf := progOptions{}
+	flag.BoolVar(&conf.debug, "debug", false, "Whether to print debug logs.")
+	flag.Parse()
+	conf.paths = flag.Args()
+
+	if len(conf.paths) == 0 {
+		fmt.Printf("USAGE: %s PATH [...]\n", os.Args[0])
+		os.Exit(1)
 	}
 
-	fst := fileStats{Path: filepath}
-	inspectFile(&buffer, &fst)
+	if !conf.debug {
+		log.SetOutput(io.Discard) // disable logging
+	}
 
-	fmt.Printf("Result %#v\n", fst)
+	results := make([]fileStats, len(conf.paths))
+
+	for i, fst := range results {
+		fst.Path = conf.paths[i]
+
+		buffer, err := os.ReadFile(fst.Path)
+		if err != nil {
+			fst.Error = err
+		}
+
+		inspectFile(&buffer, &fst)
+
+		fmt.Println(fst.String())
+	}
 }
 
 func inspectFile(buffer *[]byte, fst *fileStats) {
