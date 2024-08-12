@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"io"
@@ -60,18 +61,22 @@ func main() {
 func inspectFile(fp string, fst *fileStats) {
 	fst.Path = fp
 
-	buffer, err := os.ReadFile(fp)
+	f, err := os.Open(fp)
 	if err != nil {
 		fst.Error = err
 	}
+	defer f.Close()
 
-	inspectBuffer(&buffer, fst)
+	reader := bufio.NewReader(f)
+
+	inspectReader(reader, fst)
 
 	fmt.Println(fst.String())
 }
 
-func inspectBuffer(buffer *[]byte, fst *fileStats) {
+func inspectReader(reader *bufio.Reader, fst *fileStats) error {
 	var (
+		i              int
 		lbAll          int
 		lbCode         int
 		lbComment      int
@@ -81,68 +86,88 @@ func inspectBuffer(buffer *[]byte, fst *fileStats) {
 		prevByte       byte
 	)
 
-	// HACK: This probably won't work reliably.
-	// Probably better to write "consumers" that expect specific bytes,
-	// Look again how golang does it!
-	for i, b := range *buffer {
-		lbAll++
+	const chunkSize = 1024
+	for {
+		buffer := make([]byte, chunkSize)
+		n, err := reader.Read(buffer)
+		if err == io.EOF {
+			if n == 0 {
+				return nil
+			}
+		} else if err != nil {
+			return err
+		}
 
-		switch b {
-		case '/':
-			switch prevByte {
+		if n == 0 {
+			return nil
+		} else if n < chunkSize {
+			buffer = buffer[:n]
+		}
+
+		// HACK: This probably won't work reliably.
+		// Probably better to write "consumers" that expect specific bytes,
+		// Look again how golang does it!
+		for _, b := range buffer {
+			i++
+			lbAll++
+
+			switch b {
 			case '/':
-				if !inBlockComment && !inLineComment {
-					inLineComment = true
+				switch prevByte {
+				case '/':
+					if !inBlockComment && !inLineComment {
+						inLineComment = true
+					}
+				case '*':
+					if inBlockComment {
+						inBlockComment = false
+					}
 				}
+
 			case '*':
-				if inBlockComment {
-					inBlockComment = false
+				switch prevByte {
+				case '/':
+					if !inBlockComment && !inLineComment {
+						inBlockComment = true
+					}
 				}
-			}
 
-		case '*':
-			switch prevByte {
-			case '/':
-				if !inBlockComment && !inLineComment {
-					inBlockComment = true
+			case '\n':
+				fst.Lines++
+				if lbCode > 0 {
+					fst.LinesCode++
 				}
-			}
+				// A line may contain both code and comments
+				if lbComment > 0 {
+					fst.LinesComment++
+				} else {
+					fst.LinesEmpty++
+				}
+				log.Printf("Line %4d:  [%3d %3d %3d]\n", fst.Lines, lbCode, lbComment, lbAll)
+				bytesPerLine = append(bytesPerLine, lbAll)
+				lbAll = 0
+				lbCode = 0
+				lbComment = 0
+				inLineComment = false
 
-		case '\n':
-			fst.Lines++
-			if lbCode > 0 {
-				fst.LinesCode++
-			}
-			// A line may contain both code and comments
-			if lbComment > 0 {
-				fst.LinesComment++
-			} else {
-				fst.LinesEmpty++
-			}
-			log.Printf("Line %4d:  [%3d %3d %3d]  %s\n", fst.Lines, lbCode, lbComment, lbAll, (*buffer)[i-lbAll+1:i])
-			bytesPerLine = append(bytesPerLine, lbAll)
-			lbAll = 0
-			lbCode = 0
-			lbComment = 0
-			inLineComment = false
-
-		case '\r':
+			case '\r':
 			// do nothing
 
-		case ' ', '\t':
+			case ' ', '\t':
 			// do mothing
 			// HACK: find another way to consider lines with only whitespace as empty
 
-		default:
-			// Any character other than whitespace and comment punctuation
-			// contributes to code or comment
-			if inBlockComment || inLineComment {
-				lbComment++
-			} else {
-				lbCode++
+			default:
+				// Any character other than whitespace and comment punctuation
+				// contributes to code or comment
+				if inBlockComment || inLineComment {
+					lbComment++
+				} else {
+					lbCode++
+				}
 			}
+			prevByte = b
 		}
-		prevByte = b
 	}
 	// TODO: Add stats from bytesPerLine
 }
