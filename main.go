@@ -140,7 +140,8 @@ func inspectReader(reader *bufio.Reader, fst *fileStats) error {
 				// A line may contain both code and comments
 				if lbComment > 0 {
 					fst.LinesComment++
-				} else {
+				}
+				if lbCode == 0 && lbComment == 0 {
 					fst.LinesEmpty++
 				}
 				log.Printf("Line %4d:  [%3d %3d %3d]\n", fst.Lines, lbCode, lbComment, lbAll)
