@@ -53,20 +53,24 @@ func main() {
 	results := make([]fileStats, len(conf.paths))
 
 	for i, fst := range results {
-		fst.Path = conf.paths[i]
-
-		buffer, err := os.ReadFile(fst.Path)
-		if err != nil {
-			fst.Error = err
-		}
-
-		inspectFile(&buffer, &fst)
-
-		fmt.Println(fst.String())
+		inspectFile(conf.paths[i], &fst)
 	}
 }
 
-func inspectFile(buffer *[]byte, fst *fileStats) {
+func inspectFile(fp string, fst *fileStats) {
+	fst.Path = fp
+
+	buffer, err := os.ReadFile(fp)
+	if err != nil {
+		fst.Error = err
+	}
+
+	inspectBuffer(&buffer, fst)
+
+	fmt.Println(fst.String())
+}
+
+func inspectBuffer(buffer *[]byte, fst *fileStats) {
 	var (
 		lbAll          int
 		lbCode         int
