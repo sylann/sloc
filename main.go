@@ -24,12 +24,12 @@ func main() {
 	}
 
 	fst := fileStats{Path: filepath}
-	inspectFile(buffer, &fst)
+	inspectFile(&buffer, &fst)
 
 	fmt.Printf("Result %#v\n", fst)
 }
 
-func inspectFile(buffer []byte, fst *fileStats) {
+func inspectFile(buffer *[]byte, fst *fileStats) {
 	var (
 		lbAll          int
 		lbCode         int
@@ -43,7 +43,7 @@ func inspectFile(buffer []byte, fst *fileStats) {
 	// HACK: This probably won't work reliably.
 	// Probably better to write "consumers" that expect specific bytes,
 	// Look again how golang does it!
-	for i, b := range buffer {
+	for i, b := range *buffer {
 		lbAll++
 
 		switch b {
@@ -78,7 +78,7 @@ func inspectFile(buffer []byte, fst *fileStats) {
 			} else {
 				fst.LinesEmpty++
 			}
-			log.Printf("Line %4d:  [%3d %3d %3d]  %s\n", fst.Lines, lbCode, lbComment, lbAll, buffer[i-lbAll+1:i])
+			log.Printf("Line %4d:  [%3d %3d %3d]  %s\n", fst.Lines, lbCode, lbComment, lbAll, (*buffer)[i-lbAll+1:i])
 			bytesPerLine = append(bytesPerLine, lbAll)
 			lbAll = 0
 			lbCode = 0
