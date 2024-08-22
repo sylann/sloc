@@ -81,13 +81,13 @@ func (gst *GlobalStats) PrintGlobalStats() {
 }
 
 // DumpStatDetailsAsTsv prints out all aggregated file data in a detailed TSV table format.
-func (gst *GlobalStats) DumpStatDetailsAsTsv() {
-	fmt.Println("Path\tError" +
-		"\tLinesAll\tLinesCode\tLinesComment\tLinesEmpty" +
-		"\tMaxBplAll\tMaxBplCode\tMaxBplComment" +
+func (gst *GlobalStats) DumpStatDetailsAsTsv(w io.Writer) {
+	fmt.Fprintln(w, "Path\tError"+
+		"\tLinesAll\tLinesCode\tLinesComment\tLinesEmpty"+
+		"\tMaxBplAll\tMaxBplCode\tMaxBplComment"+
 		"\tAvgBplAll\tAvgBplCode\tAvgBplComment")
 	for _, fst := range gst.files {
-		fmt.Printf("%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.2f\t%.2f\t%.2f\n",
+		fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.2f\t%.2f\t%.2f\n",
 			fst.Path,
 			fst.Error(),
 			fst.LinesAll,

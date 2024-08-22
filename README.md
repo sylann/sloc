@@ -18,9 +18,9 @@ in a project or in a file.
 - [x]  count average number of characters per line (file average)
 - [x]  add more stats
 - [ ]  refactor stats generation (it's a mess right now)
-- [ ]  only dump global stats to stdout
-  - [ ]  dump per file stats to a tsv file
-  - [ ]  make tsv dump optional with a flag
+- [x]  only dump global stats to stdout
+  - [x]  dump per file stats to a tsv file
+  - [x]  make tsv dump optional with a flag
 - [ ]  test again whether chunked reading makes a meaningful difference
 
 ## Whishes
