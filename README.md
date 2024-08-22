@@ -16,10 +16,15 @@ in a project or in a file.
 - [x]  count average number of characters per file (global average)
 - [x]  count maximum number of characters per line (file max)
 - [x]  count average number of characters per line (file average)
-- [ ]  add more stats
+- [x]  add more stats
+- [ ]  refactor stats generation (it's a mess right now)
 - [ ]  only dump global stats to stdout
   - [ ]  dump per file stats to a tsv file
   - [ ]  make tsv dump optional with a flag
+- [ ]  test again whether chunked reading makes a meaningful difference
+
+## Whishes
+
 - [ ]  inspect all files in directory
   - [ ]  in current directory by default
   - [ ]  in given directory (argument, default to current)

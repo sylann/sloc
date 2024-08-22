@@ -35,9 +35,9 @@ func main() {
 }
 
 type globalStats struct {
-	files                 []*fileStats
-	MaxLpfAll, MaxLpfCode int
-	AvgLpfAll, AvgLpfCode float64
+	files                                             []*fileStats
+	MaxLpfAll, MaxLpfCode, MaxLpfComment, MaxLpfEmpty int
+	AvgLpfAll, AvgLpfCode, AvgLpfComment, AvgLpfEmpty float64
 }
 
 func newGlobalStats(paths []string) globalStats {
@@ -54,9 +54,9 @@ func newGlobalStats(paths []string) globalStats {
 // inspectFiles reads underlying files and stores aggregated statistics.
 func (gst *globalStats) inspectFiles() {
 	var (
-		validFiles      int
-		sumAll, sumCode int
-		maxAll, maxCode int
+		validFiles                            int
+		sumAll, sumCode, sumComment, sumEmpty int
+		maxAll, maxCode, maxComment, maxEmpty int
 	)
 	for _, fst := range gst.files {
 		err := fst.inspectFile()
@@ -66,45 +66,62 @@ func (gst *globalStats) inspectFiles() {
 		validFiles++
 		sumAll += fst.LinesAll
 		sumCode += fst.LinesCode
+		sumComment += fst.LinesComment
+		sumEmpty += fst.LinesEmpty
 		maxAll = max(maxAll, fst.LinesAll)
 		maxCode = max(maxCode, fst.LinesCode)
+		maxComment = max(maxComment, fst.LinesComment)
+		maxEmpty = max(maxEmpty, fst.LinesEmpty)
 	}
 	gst.MaxLpfAll = maxAll
 	gst.MaxLpfCode = maxCode
+	gst.MaxLpfComment = maxComment
+	gst.MaxLpfEmpty = maxEmpty
 	gst.AvgLpfAll = float64(sumAll) / float64(validFiles)
 	gst.AvgLpfCode = float64(sumCode) / float64(validFiles)
+	gst.AvgLpfComment = float64(sumComment) / float64(validFiles)
+	gst.AvgLpfEmpty = float64(sumEmpty) / float64(validFiles)
 }
 
 func (gst *globalStats) GlobalStats() {
 	fmt.Printf("Files: %d\n", len(gst.files))
-	fmt.Printf("Max LpF All:  %d\n", gst.MaxLpfAll)
-	fmt.Printf("Max LpF Code: %d\n", gst.MaxLpfCode)
-	fmt.Printf("Avg LpF All:  %.2f\n", gst.AvgLpfAll)
-	fmt.Printf("Avg LpF Code: %.2f\n", gst.AvgLpfCode)
+	fmt.Printf("Max LpF All:     %d\n", gst.MaxLpfAll)
+	fmt.Printf("Max LpF Code:    %d\n", gst.MaxLpfCode)
+	fmt.Printf("Max LpF Comment: %d\n", gst.MaxLpfComment)
+	fmt.Printf("Max LpF Empty:   %d\n", gst.MaxLpfEmpty)
+	fmt.Printf("Avg LpF All:     %.2f\n", gst.AvgLpfAll)
+	fmt.Printf("Avg LpF Code:    %.2f\n", gst.AvgLpfCode)
+	fmt.Printf("Avg LpF Comment: %.2f\n", gst.AvgLpfComment)
+	fmt.Printf("Avg LpF Empty:   %.2f\n", gst.AvgLpfEmpty)
 }
 
 func (gst *globalStats) DumpStatDetailsAsTsv() {
-	fmt.Println("Path\tError\tLinesAll\tLinesCode\tLinesEmpty\tLinesComment\tMaxBplAll\tMaxBplCode\tAvgBplAll\tAvgBplCode")
+	fmt.Println("Path\tError" +
+		"\tLinesAll\tLinesCode\tLinesComment\tLinesEmpty" +
+		"\tMaxBplAll\tMaxBplCode\tMaxBplComment" +
+		"\tAvgBplAll\tAvgBplCode\tAvgBplComment")
 	for _, fst := range gst.files {
-		fmt.Printf("%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%.2f\t%.2f\n",
+		fmt.Printf("%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.2f\t%.2f\t%.2f\n",
 			fst.Path,
 			fst.Error(),
 			fst.LinesAll,
 			fst.LinesCode,
-			fst.LinesEmpty,
 			fst.LinesComment,
+			fst.LinesEmpty,
 			fst.MaxBplAll,
 			fst.MaxBplCode,
+			fst.MaxBplComment,
 			fst.AvgBplAll,
 			fst.AvgBplCode,
+			fst.AvgBplComment,
 		)
 	}
 }
 
 type fileStats struct {
-	LinesAll, LinesCode, LinesEmpty, LinesComment int
-	MaxBplAll, MaxBplCode                         int
-	AvgBplAll, AvgBplCode                         float64
+	LinesAll, LinesCode, LinesComment, LinesEmpty int
+	MaxBplAll, MaxBplCode, MaxBplComment          int
+	AvgBplAll, AvgBplCode, AvgBplComment          float64
 	Path                                          string
 	err                                           error
 }
@@ -138,13 +155,13 @@ func (fst *fileStats) inspectFile() error {
 
 func (fst *fileStats) inspectReader(reader *bufio.Reader) error {
 	var (
-		i                        int
-		lbAll, lbCode, lbComment int
-		sumAll, sumCode          int
-		maxAll, maxCode          int
-		inBlockComment           bool
-		inLineComment            bool
-		prevByte                 byte
+		i                           int
+		lbAll, lbCode, lbComment    int
+		sumAll, sumCode, sumComment int
+		maxAll, maxCode, maxComment int
+		inBlockComment              bool
+		inLineComment               bool
+		prevByte                    byte
 	)
 
 	const chunkSize = 1024
@@ -205,11 +222,12 @@ func (fst *fileStats) inspectReader(reader *bufio.Reader) error {
 				if lbCode == 0 && lbComment == 0 {
 					fst.LinesEmpty++
 				}
-				log.Printf("Line %4d:  [%3d %3d %3d]\n", fst.LinesAll, lbCode, lbComment, lbAll)
 				sumAll += lbAll
-				maxAll = max(maxAll, lbAll)
 				sumCode += lbCode
+				sumComment += lbComment
+				maxAll = max(maxAll, lbAll)
 				maxCode = max(maxCode, lbCode)
+				maxComment = max(maxComment, lbComment)
 				lbAll = 0
 				lbCode = 0
 				lbComment = 0
@@ -237,7 +255,9 @@ func (fst *fileStats) inspectReader(reader *bufio.Reader) error {
 calculateStats:
 	fst.MaxBplAll = maxAll
 	fst.MaxBplCode = maxCode
+	fst.MaxBplComment = maxComment
 	fst.AvgBplAll = float64(sumAll) / float64(fst.LinesAll)
 	fst.AvgBplCode = float64(sumCode) / float64(fst.LinesAll)
+	fst.AvgBplComment = float64(sumComment) / float64(fst.LinesAll)
 	return nil
 }
