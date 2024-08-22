@@ -3,6 +3,15 @@
 A small program to produce various statistics related to the source lines of code
 in a project or in a file.
 
+## Usage
+
+Example run on the Golang source code base.
+This requires having globs (`/**/`) enabled.
+
+```sh
+go run . -tsv dist/go-src.tsv /usr/local/go/src/**/*.go
+```
+
 ## TODO
 
 - [x]  inspect file character by character
@@ -22,6 +31,7 @@ in a project or in a file.
   - [x]  dump per file stats to a tsv file
   - [x]  make tsv dump optional with a flag
 - [ ]  test again whether chunked reading makes a meaningful difference
+- [ ]  test what part of the write/print process costs the most
 
 ## Whishes
 
