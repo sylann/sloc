@@ -7,42 +7,19 @@ import (
 	"io"
 	"log"
 	"os"
-	"strconv"
 )
 
 type progOptions struct {
-	paths   []string
-	debug   bool
-}
-
-type fileStats struct {
-	Path         string
-	Error        error
-	Lines        int
-	LinesCode    int
-	LinesEmpty   int
-	LinesComment int
-	LineBytesAvg int
-	LineBytesMax int
-}
-
-func (f *fileStats) String() string {
-	return f.Path +
-		"\n\t- Lines: " + strconv.Itoa(f.Lines) +
-		"\n\t- LinesCode: " + strconv.Itoa(f.LinesCode) +
-		"\n\t- LinesEmpty: " + strconv.Itoa(f.LinesEmpty) +
-		"\n\t- LinesComment: " + strconv.Itoa(f.LinesComment) +
-		"\n\t- LineBytesAvg: " + strconv.Itoa(f.LineBytesAvg) +
-		"\n\t- LineBytesMax: " + strconv.Itoa(f.LineBytesMax)
+	debug bool
 }
 
 func main() {
 	conf := progOptions{}
 	flag.BoolVar(&conf.debug, "debug", false, "Whether to print debug logs.")
 	flag.Parse()
-	conf.paths = flag.Args()
+	paths := flag.Args()
 
-	if len(conf.paths) == 0 {
+	if len(paths) == 0 {
 		fmt.Printf("USAGE: %s PATH [...]\n", os.Args[0])
 		os.Exit(1)
 	}
@@ -51,39 +28,123 @@ func main() {
 		log.SetOutput(io.Discard) // disable logging
 	}
 
-	results := make([]fileStats, len(conf.paths))
+	gst := newGlobalStats(paths)
+	gst.inspectFiles()
+	gst.DumpStatDetailsAsTsv()
+	gst.GlobalStats()
+}
 
-	for i, fst := range results {
-		inspectFile(conf.paths[i], &fst)
+type globalStats struct {
+	files                 []*fileStats
+	MaxLpfAll, MaxLpfCode int
+	AvgLpfAll, AvgLpfCode float64
+}
+
+func newGlobalStats(paths []string) globalStats {
+	size := len(paths)
+	gst := globalStats{
+		files: make([]*fileStats, size),
+	}
+	for i := 0; i < size; i++ {
+		gst.files[i] = NewFileStats(paths[i])
+	}
+	return gst
+}
+
+// inspectFiles reads underlying files and stores aggregated statistics.
+func (gst *globalStats) inspectFiles() {
+	var (
+		validFiles      int
+		sumAll, sumCode int
+		maxAll, maxCode int
+	)
+	for _, fst := range gst.files {
+		err := fst.inspectFile()
+		if err != nil {
+			continue
+		}
+		validFiles++
+		sumAll += fst.LinesAll
+		sumCode += fst.LinesCode
+		maxAll = max(maxAll, fst.LinesAll)
+		maxCode = max(maxCode, fst.LinesCode)
+	}
+	gst.MaxLpfAll = maxAll
+	gst.MaxLpfCode = maxCode
+	gst.AvgLpfAll = float64(sumAll) / float64(validFiles)
+	gst.AvgLpfCode = float64(sumCode) / float64(validFiles)
+}
+
+func (gst *globalStats) GlobalStats() {
+	fmt.Printf("Files: %d\n", len(gst.files))
+	fmt.Printf("Max LpF All:  %d\n", gst.MaxLpfAll)
+	fmt.Printf("Max LpF Code: %d\n", gst.MaxLpfCode)
+	fmt.Printf("Avg LpF All:  %.2f\n", gst.AvgLpfAll)
+	fmt.Printf("Avg LpF Code: %.2f\n", gst.AvgLpfCode)
+}
+
+func (gst *globalStats) DumpStatDetailsAsTsv() {
+	fmt.Println("Path\tError\tLinesAll\tLinesCode\tLinesEmpty\tLinesComment\tMaxBplAll\tMaxBplCode\tAvgBplAll\tAvgBplCode")
+	for _, fst := range gst.files {
+		fmt.Printf("%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%.2f\t%.2f\n",
+			fst.Path,
+			fst.Error(),
+			fst.LinesAll,
+			fst.LinesCode,
+			fst.LinesEmpty,
+			fst.LinesComment,
+			fst.MaxBplAll,
+			fst.MaxBplCode,
+			fst.AvgBplAll,
+			fst.AvgBplCode,
+		)
 	}
 }
 
-func inspectFile(fp string, fst *fileStats) {
-	fst.Path = fp
+type fileStats struct {
+	LinesAll, LinesCode, LinesEmpty, LinesComment int
+	MaxBplAll, MaxBplCode                         int
+	AvgBplAll, AvgBplCode                         float64
+	Path                                          string
+	err                                           error
+}
 
-	f, err := os.Open(fp)
+func (fst *fileStats) Error() string {
+	if fst.err == nil {
+		return ""
+	}
+	return fst.err.Error()
+}
+
+func NewFileStats(path string) *fileStats {
+	return &fileStats{Path: path}
+}
+
+// inspectFile reads the file and aggregates code syntax statistics of the content.
+// If the path can't be read, or an underlying function fails, it sets fst.Error
+// and returns the error.
+func (fst *fileStats) inspectFile() error {
+	f, err := os.Open(fst.Path)
 	if err != nil {
-		fst.Error = err
+		fst.err = err
+		return err
 	}
 	defer f.Close()
 
 	reader := bufio.NewReader(f)
 
-	inspectReader(reader, fst)
-
-	fmt.Println(fst.String())
+	return fst.inspectReader(reader)
 }
 
-func inspectReader(reader *bufio.Reader, fst *fileStats) error {
+func (fst *fileStats) inspectReader(reader *bufio.Reader) error {
 	var (
-		i              int
-		lbAll          int
-		lbCode         int
-		lbComment      int
-		inBlockComment bool
-		inLineComment  bool
-		bytesPerLine   []int = make([]int, 0)
-		prevByte       byte
+		i                        int
+		lbAll, lbCode, lbComment int
+		sumAll, sumCode          int
+		maxAll, maxCode          int
+		inBlockComment           bool
+		inLineComment            bool
+		prevByte                 byte
 	)
 
 	const chunkSize = 1024
@@ -92,14 +153,14 @@ func inspectReader(reader *bufio.Reader, fst *fileStats) error {
 		n, err := reader.Read(buffer)
 		if err == io.EOF {
 			if n == 0 {
-				return nil
+				goto calculateStats
 			}
 		} else if err != nil {
 			return err
 		}
 
 		if n == 0 {
-			return nil
+			goto calculateStats
 		} else if n < chunkSize {
 			buffer = buffer[:n]
 		}
@@ -133,7 +194,7 @@ func inspectReader(reader *bufio.Reader, fst *fileStats) error {
 				}
 
 			case '\n':
-				fst.Lines++
+				fst.LinesAll++
 				if lbCode > 0 {
 					fst.LinesCode++
 				}
@@ -144,8 +205,11 @@ func inspectReader(reader *bufio.Reader, fst *fileStats) error {
 				if lbCode == 0 && lbComment == 0 {
 					fst.LinesEmpty++
 				}
-				log.Printf("Line %4d:  [%3d %3d %3d]\n", fst.Lines, lbCode, lbComment, lbAll)
-				bytesPerLine = append(bytesPerLine, lbAll)
+				log.Printf("Line %4d:  [%3d %3d %3d]\n", fst.LinesAll, lbCode, lbComment, lbAll)
+				sumAll += lbAll
+				maxAll = max(maxAll, lbAll)
+				sumCode += lbCode
+				maxCode = max(maxCode, lbCode)
 				lbAll = 0
 				lbCode = 0
 				lbComment = 0
@@ -155,7 +219,7 @@ func inspectReader(reader *bufio.Reader, fst *fileStats) error {
 			// do nothing
 
 			case ' ', '\t':
-			// do mothing
+			// do nothing
 			// HACK: find another way to consider lines with only whitespace as empty
 
 			default:
@@ -170,5 +234,10 @@ func inspectReader(reader *bufio.Reader, fst *fileStats) error {
 			prevByte = b
 		}
 	}
-	// TODO: Add stats from bytesPerLine
+calculateStats:
+	fst.MaxBplAll = maxAll
+	fst.MaxBplCode = maxCode
+	fst.AvgBplAll = float64(sumAll) / float64(fst.LinesAll)
+	fst.AvgBplCode = float64(sumCode) / float64(fst.LinesAll)
+	return nil
 }

@@ -12,10 +12,14 @@ in a project or in a file.
        - handle "/*...*/" -> " "
        - handle "//...\n" -> "\n"
 - [x]  count sloc (source lines of code) (not empty, and not a comment)
-- [ ]  count maximum number of characters per file
-- [ ]  count average number of characters per file
-- [ ]  count maximum number of characters per line
-- [ ]  count average number of characters per line
+- [x]  count maximum number of characters per file (global max)
+- [x]  count average number of characters per file (global average)
+- [x]  count maximum number of characters per line (file max)
+- [x]  count average number of characters per line (file average)
+- [ ]  add more stats
+- [ ]  only dump global stats to stdout
+  - [ ]  dump per file stats to a tsv file
+  - [ ]  make tsv dump optional with a flag
 - [ ]  inspect all files in directory
   - [ ]  in current directory by default
   - [ ]  in given directory (argument, default to current)
