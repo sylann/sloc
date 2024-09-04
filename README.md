@@ -12,6 +12,12 @@ This requires having globs (`/**/`) enabled.
 go run . -tsv dist/go-src.tsv /usr/local/go/src/**/*.go
 ```
 
+## Build
+
+```sh
+go build -o dist/sloc -ldflags "-s"
+```
+
 ## TODO
 
 - [x]  inspect file character by character
