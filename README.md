@@ -24,29 +24,34 @@ go build -o dist/sloc -ldflags "-s"
 - [x]  count lines
 - [x]  count empty lines
 - [x]  count comments
-       - handle "/*...*/" -> " "
-       - handle "//...\n" -> "\n"
+  - handle "/*...*/" -> " "
+  - handle "//...\n" -> "\n"
 - [x]  count sloc (source lines of code) (not empty, and not a comment)
 - [x]  count maximum number of characters per file (global max)
 - [x]  count average number of characters per file (global average)
 - [x]  count maximum number of characters per line (file max)
 - [x]  count average number of characters per line (file average)
 - [x]  add more stats
-- [ ]  refactor stats generation (it's a mess right now)
 - [x]  only dump global stats to stdout
   - [x]  dump per file stats to a tsv file
   - [x]  make tsv dump optional with a flag
+- [ ]  improve global stats output
+- [ ]  accept new options: root dir and file extensions (remove path args?)
+       (globs won't work on all systems, and are already annoying in xargs)
+  - in current directory by default
+  - works reccursively (add option to enable/disable later?)
+  - extensions mandatory or not
+- [ ]  group results by extension
+
+## Refactoring
+
+- [ ]  find a way to improve how stats generation is coded
+
+## Optimization
+
+> Frankly for now, there does not seem to be a need for optimization as it already runs instantly on the full go code base.
+> It even runs almost instantly when I forget to ignore blackholes such as node_modules!
+
 - [ ]  test again whether chunked reading makes a meaningful difference
 - [ ]  test what part of the write/print process costs the most
-
-## Whishes
-
-- [ ]  inspect all files in directory
-  - [ ]  in current directory by default
-  - [ ]  in given directory (argument, default to current)
-  - [ ]  reccursively
-  - [ ]  inspect each file in a goroutine, aggregate results in parallel
-  - [ ]  specific file type (argument)
-  - [ ]  any file type, group results by file type
-- [ ]  count runes instead of bytes?
-
+- [ ]  inspect each file in a goroutine, aggregate results in parallel
