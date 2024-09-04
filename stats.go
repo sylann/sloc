@@ -18,6 +18,7 @@ import (
 // - Avg: "Average"
 type GlobalStats struct {
 	files                                             []*FileStats
+	LinesAll, LinesCode, LinesComment, LinesEmpty     int
 	MaxLpfAll, MaxLpfCode, MaxLpfComment, MaxLpfEmpty int
 	AvgLpfAll, AvgLpfCode, AvgLpfComment, AvgLpfEmpty float64
 }
@@ -37,21 +38,18 @@ func NewGlobalStats(paths []string) GlobalStats {
 // InspectBatch reads underlying files and stores aggregated
 // statistics for the whole batch.
 func (gst *GlobalStats) InspectBatch() {
-	var (
-		validFiles                            int
-		sumAll, sumCode, sumComment, sumEmpty int
-		maxAll, maxCode, maxComment, maxEmpty int
-	)
+	var validFiles, maxAll, maxCode, maxComment, maxEmpty int
+
 	for _, fst := range gst.files {
 		err := fst.InspectFile()
 		if err != nil {
 			continue
 		}
 		validFiles++
-		sumAll += fst.LinesAll
-		sumCode += fst.LinesCode
-		sumComment += fst.LinesComment
-		sumEmpty += fst.LinesEmpty
+		gst.LinesAll += fst.LinesAll
+		gst.LinesCode += fst.LinesCode
+		gst.LinesComment += fst.LinesComment
+		gst.LinesEmpty += fst.LinesEmpty
 		maxAll = max(maxAll, fst.LinesAll)
 		maxCode = max(maxCode, fst.LinesCode)
 		maxComment = max(maxComment, fst.LinesComment)
@@ -61,15 +59,19 @@ func (gst *GlobalStats) InspectBatch() {
 	gst.MaxLpfCode = maxCode
 	gst.MaxLpfComment = maxComment
 	gst.MaxLpfEmpty = maxEmpty
-	gst.AvgLpfAll = float64(sumAll) / float64(validFiles)
-	gst.AvgLpfCode = float64(sumCode) / float64(validFiles)
-	gst.AvgLpfComment = float64(sumComment) / float64(validFiles)
-	gst.AvgLpfEmpty = float64(sumEmpty) / float64(validFiles)
+	gst.AvgLpfAll = float64(gst.LinesAll) / float64(validFiles)
+	gst.AvgLpfCode = float64(gst.LinesCode) / float64(validFiles)
+	gst.AvgLpfComment = float64(gst.LinesComment) / float64(validFiles)
+	gst.AvgLpfEmpty = float64(gst.LinesEmpty) / float64(validFiles)
 }
 
 // PrintGlobalStats prints out global statistics about previously aggregated data.
 func (gst *GlobalStats) PrintGlobalStats() {
 	fmt.Printf("Files: %d\n", len(gst.files))
+	fmt.Printf("Lines All:       %d\n", gst.MaxLpfAll)
+	fmt.Printf("Lines Code:      %d\n", gst.MaxLpfCode)
+	fmt.Printf("Lines Comment:   %d\n", gst.MaxLpfComment)
+	fmt.Printf("Lines Empty:     %d\n", gst.MaxLpfEmpty)
 	fmt.Printf("Max LpF All:     %d\n", gst.MaxLpfAll)
 	fmt.Printf("Max LpF Code:    %d\n", gst.MaxLpfCode)
 	fmt.Printf("Max LpF Comment: %d\n", gst.MaxLpfComment)
