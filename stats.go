@@ -67,19 +67,28 @@ func (gst *GlobalStats) InspectBatch() {
 
 // PrintGlobalStats prints out global statistics about previously aggregated data.
 func (gst *GlobalStats) PrintGlobalStats() {
-	fmt.Printf("Files: %d\n", len(gst.files))
-	fmt.Printf("Lines All:       %d\n", gst.MaxLpfAll)
-	fmt.Printf("Lines Code:      %d\n", gst.MaxLpfCode)
-	fmt.Printf("Lines Comment:   %d\n", gst.MaxLpfComment)
-	fmt.Printf("Lines Empty:     %d\n", gst.MaxLpfEmpty)
-	fmt.Printf("Max LpF All:     %d\n", gst.MaxLpfAll)
-	fmt.Printf("Max LpF Code:    %d\n", gst.MaxLpfCode)
-	fmt.Printf("Max LpF Comment: %d\n", gst.MaxLpfComment)
-	fmt.Printf("Max LpF Empty:   %d\n", gst.MaxLpfEmpty)
-	fmt.Printf("Avg LpF All:     %.2f\n", gst.AvgLpfAll)
-	fmt.Printf("Avg LpF Code:    %.2f\n", gst.AvgLpfCode)
-	fmt.Printf("Avg LpF Comment: %.2f\n", gst.AvgLpfComment)
-	fmt.Printf("Avg LpF Empty:   %.2f\n", gst.AvgLpfEmpty)
+	fmt.Printf("Files:           %8d\n", len(gst.files))
+	fmt.Printf("Lines All:       %8d\n", gst.LinesAll)
+	fmt.Printf("Lines Code:      %8d\n", gst.LinesCode)
+	fmt.Printf("Lines Comment:   %8d\n", gst.LinesComment)
+	fmt.Printf("Lines Empty:     %8d\n", gst.LinesEmpty)
+	fmt.Printf("Max LpF All:     %8d\n", gst.MaxLpfAll)
+	fmt.Printf("Max LpF Code:    %8d\n", gst.MaxLpfCode)
+	fmt.Printf("Max LpF Comment: %8d\n", gst.MaxLpfComment)
+	fmt.Printf("Max LpF Empty:   %8d\n", gst.MaxLpfEmpty)
+	fmt.Printf("Avg LpF All:     %8.1f\n", gst.AvgLpfAll)
+	fmt.Printf("Avg LpF Code:    %8.1f\n", gst.AvgLpfCode)
+	fmt.Printf("Avg LpF Comment: %8.1f\n", gst.AvgLpfComment)
+	fmt.Printf("Avg LpF Empty:   %8.1f\n", gst.AvgLpfEmpty)
+}
+
+// PrintGlobalStats prints out global statistics about previously aggregated data.
+func (gst *GlobalStats) PrintGlobalStatsPretty() {
+	fmt.Printf("                    | %8s | %8s | %8s | %8s |\n", "All", "Code", "Comment", "Empty")
+	fmt.Printf("Total Lines         | %8d | %8d | %8d | %8d |\n", gst.LinesAll, gst.LinesCode, gst.LinesComment, gst.LinesEmpty)
+	fmt.Printf("Max  Lines per File | %8d | %8d | %8d | %8d |\n", gst.MaxLpfAll, gst.MaxLpfCode, gst.MaxLpfComment, gst.MaxLpfEmpty)
+	fmt.Printf("Avg. Lines per File | %8.1f | %8.1f | %8.1f | %8.1f |\n", gst.AvgLpfAll, gst.AvgLpfCode, gst.AvgLpfComment, gst.AvgLpfEmpty)
+	fmt.Printf("Total Files inspected: %d\n", len(gst.files))
 }
 
 // DumpStatDetailsAsTsv prints out all aggregated file data in a detailed TSV table format.

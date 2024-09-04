@@ -9,14 +9,16 @@ import (
 )
 
 type progOptions struct {
-	debug   bool
-	tsvPath string
+	debug     bool
+	printYaml bool
+	tsvPath   string
 }
 
 func main() {
 	conf := progOptions{}
 	flag.BoolVar(&conf.debug, "debug", false, "Whether to print debug logs.")
 	flag.StringVar(&conf.tsvPath, "tsv", "", "Path of a tsv file to write detailed results. No effect if not provided. Use '-' to print to stdout.")
+	flag.BoolVar(&conf.printYaml, "yaml", false, "Whether to print global stats in yaml like syntax instead of pretty table.")
 	flag.Parse()
 	paths := flag.Args()
 
@@ -31,7 +33,11 @@ func main() {
 
 	gst := NewGlobalStats(paths)
 	gst.InspectBatch()
-	gst.PrintGlobalStats()
+	if conf.printYaml {
+		gst.PrintGlobalStats()
+	} else {
+		gst.PrintGlobalStatsPretty()
+	}
 
 	switch conf.tsvPath {
 	case "": // do nothing
